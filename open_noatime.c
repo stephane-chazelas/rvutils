@@ -9,7 +9,7 @@
  *
  * Compile:
  *
- *   cc -O2 -Wall -Wextra -shared -fPIC -o open_noatime.so open_noatime.c -ldl
+ *   cc -O2 -D_GNU_SOURCE -Wall -Wextra -shared -fPIC -o open_noatime.so open_noatime.c -ldl
  *
  * Install:
  *
