@@ -40,18 +40,21 @@
 
 /*
  * The correct test for whether a mode argument is present is (flags &
- * (O_CREAT | __O_TMPFILE)), if __O_TMPFILE is defined (whether or not
- * the kernel supports it). But if __O_TMPFILE is not defined in the
- * headers, and one subsequently installs newer glibc/kernel and a
- * program using O_TMPFILE, this shared library must also be
- * recompiled.
+ * O_CREAT || (flags & O_TMPFILE) == O_TMPFILE), if O_TMPFILE is
+ * defined (whether or not the kernel supports it). But if O_TMPFILE
+ * is not defined in the headers, and one subsequently installs newer
+ * glibc/kernel and a program using O_TMPFILE, this shared library must
+ * also be recompiled.
+ *
+ * Note that checking for flags & O_TMPFILE != 0 is wrong as
+ * O_TMPFILE includes the O_DIRECTORY bit.
  *
  * The damage is not huge, however: The mode of an O_TMPFILE only
  * matters if it is subsequently linked into the file system, which is
  * probably not that usual.
  */
-#if !defined(__O_TMPFILE)
-#define __O_TMPFILE 0
+#if !defined(O_TMPFILE)
+#define O_TMPFILE 0
 #warning "Your headers don't have O_TMPFILE. Don't use this shared library with programs using O_TMPFILE."
 #endif
 
@@ -101,7 +104,7 @@ open(const char *path, int flags, ...)
 	mode_t mode = 0;
 	int fd;
 
-	if (flags & (O_CREAT | __O_TMPFILE)) {
+	if (flags & O_CREAT || (flags & O_TMPFILE) == O_TMPFILE) {
 		va_start(ap, flags);
 		mode = va_arg(ap, typeof(+(mode_t)0));
 		va_end(ap);
@@ -131,7 +134,7 @@ openat(int dirfd, const char *path, int flags, ...)
 	mode_t mode = 0;
 	int fd;
 
-	if (flags & (O_CREAT | __O_TMPFILE)) {
+	if (flags & (O_CREAT | O_TMPFILE)) {
 		va_start(ap, flags);
 		mode = va_arg(ap, typeof(+(mode_t)0));
 		va_end(ap);
