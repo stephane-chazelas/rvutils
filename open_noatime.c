@@ -70,6 +70,7 @@
  */
 
 typedef typeof(open) *libc_open_t;
+typedef typeof(open64) *libc_open64_t;
 typedef typeof(openat) *libc_openat_t;
 
 /*
@@ -96,35 +97,39 @@ typedef typeof(openat) *libc_openat_t;
  * "integer promotions".
  */
 
-int
-open(const char *path, int flags, ...)
-{
-	static libc_open_t libc_open = NULL;
-	va_list ap;
-	mode_t mode = 0;
-	int fd;
-
-	if (flags & O_CREAT || (flags & O_TMPFILE) == O_TMPFILE) {
-		va_start(ap, flags);
-		mode = va_arg(ap, typeof(+(mode_t)0));
-		va_end(ap);
-	}
-
-	/*
-	 * I'm assuming that assigning to a pointer variable is
-	 * atomic, and dlsym(RTLD_NEXT, "open") should return the same
-	 * value every time, so thread safety shouldn't be an issue.
-	 */
-	if (libc_open == NULL)
-		libc_open = dlsym(RTLD_NEXT, "open");
-	assert(libc_open != NULL);
-
-	fd = libc_open(path, flags | O_NOATIME, mode);
-	if (fd < 0 && errno == EPERM)
-		fd = libc_open(path, flags & ~O_NOATIME, mode);
-
-	return fd;
+#define WRAP_OPEN(fn) \
+int \
+fn(const char *path, int flags, ...) \
+{ \
+	static libc_##fn##_t libc_##fn = NULL; \
+	va_list ap; \
+	mode_t mode = 0; \
+	int fd; \
+ \
+	if (flags & O_CREAT || (flags & O_TMPFILE) == O_TMPFILE) { \
+		va_start(ap, flags); \
+		mode = va_arg(ap, typeof(+(mode_t)0)); \
+		va_end(ap); \
+	} \
+ \
+	/* \
+	 * I'm assuming that assigning to a pointer variable is \
+	 * atomic, and dlsym(RTLD_NEXT, "open") should return the same \
+	 * value every time, so thread safety shouldn't be an issue. \
+	 */ \
+	if (libc_##fn == NULL) \
+		libc_##fn = dlsym(RTLD_NEXT, #fn); \
+	assert(libc_##fn != NULL); \
+ \
+	fd = libc_##fn(path, flags | O_NOATIME, mode); \
+	if (fd < 0 && errno == EPERM) \
+		fd = libc_##fn(path, flags & ~O_NOATIME, mode); \
+ \
+	return fd; \
 }
+
+WRAP_OPEN(open);
+WRAP_OPEN(open64);
 
 int
 openat(int dirfd, const char *path, int flags, ...)
