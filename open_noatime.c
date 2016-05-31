@@ -26,6 +26,7 @@
  */
 
 #include <sys/types.h>
+#include <dirent.h>
 #include <fcntl.h>
 #include <dlfcn.h>
 #include <stdarg.h>
@@ -145,4 +146,12 @@ openat(int dirfd, const char *path, int flags, ...)
 		fd = libc_openat(dirfd, path, flags & ~O_NOATIME, mode);
 
 	return fd;
+}
+
+DIR* opendir(const char *name)
+{
+	int fd;
+	fd = open(name, O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC|O_NOATIME);
+	if (fd < 0) return NULL;
+	return fdopendir(fd);
 }
